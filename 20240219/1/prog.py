@@ -18,8 +18,8 @@ def main():
         f_hash = f.read().split()[0]
 
     while len(list(glob.iglob(os.path.join(".git/objects", f_hash[0:2], f_hash[2:])))) > 0:
-        parent, parent_tree = print_last_commit_tree(f_hash)
-        print_last_history()
+        parent_tree, tree = print_last_commit_tree(f_hash)
+        print_tree(tree)
 
 
 def print_last_commit_tree(commit):
@@ -38,8 +38,20 @@ def print_last_commit_tree(commit):
     return parent_tree, tree
 
 
-def print_last_history():
-    pass
+def print_tree(tree):
+    file = os.path.join(".git/objects", tree[0:2], tree[2:])
+    with open(tree_file, "rb") as f:
+        data = zlib.decompress(f.read())
+    header, _, body = data.partition(b'\x00')
+    while body:
+        treeobj, _, tail = body.partition(b"\x00")
+        num, body = tail[:20], tail[20:]
+        mode, name = treeobj.split()
+        num, body = tail[:20], tail[20:]
+        obj_type = "tree"
+        if not list(glob.iglob(os.path.join(".git/objects", num.hex()[0:2], num.hex()[2:]))):
+            obj_type = "blob"
+        print(f"{obj_type} {num.hex()}\t{name.decode()}")
 
 
 if __name__ == "__main__":
