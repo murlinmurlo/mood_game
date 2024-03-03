@@ -29,7 +29,7 @@ class Monster:
         self.greeting = greeting
 
     def encounter(self):
-        print(cowsay.cow(self.greeting, cow=self.name))
+        print(cowsay.cow(self.greeting, cow=self.name)) #added name
 
 
 class Game:
