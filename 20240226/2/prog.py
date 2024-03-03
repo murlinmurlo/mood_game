@@ -37,12 +37,12 @@ class Game:
         self.player = Player()
         self.monsters = []
 
-    def addmon(self, x, y, name, greeting):
+    def addmon(self, x, y, name, greeting): #names for monsters
         if name not in cowsay.list_cows():
             print("Cannot add unknown monster")
             return
 
-        for monster in self.monsters:
+        for monster in self.monsters: #chec
             if monster.x == x and monster.y == y:
                 monster.name = name
                 monster.greeting = greeting
