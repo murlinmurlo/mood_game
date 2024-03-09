@@ -1,6 +1,24 @@
-from cowsay import cowsay, list_cows
+import cowsay 
 import sys
 import random
+import io
+
+custom_monster = cowsay.read_dot_cow(io.StringIO("""
+$the_cow = <<EOC;
+         $thoughts
+          $thoughts
+    ,_                    _,
+    ) '-._  ,_    _,  _.-' (
+    )  _.-'.|\\--//|.'-._  (
+     )'   .'\/o\/o\/'.   `(
+      ) .' . \====/ . '. (
+       )  / <<    >> \  (
+        '-._/``  ``\_.-'
+  jgs     __\\'--'//__
+         (((""`  `"")))
+EOC
+"""))
+
 
 class Player:
     def __init__(self):
@@ -29,7 +47,12 @@ class Monster:
         self.greeting = greeting
 
     def encounter(self):
-        print(cowsay.cow(self.greeting, cow=self.name)) #added name
+        if monster.name == 'jgsbat':
+            print(cowsay.cowsay(self.greeting, cowfile=custom_monster))
+        else:
+            print(cowsay.cowsay(self.greeting, cow=self.name)) #added name
+
+        
 
 
 class Game:
