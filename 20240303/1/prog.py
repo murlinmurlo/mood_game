@@ -47,8 +47,12 @@ class Game:
             if monster.x == x and monster.y == y:
                 monster.hello = hello_string
                 monster.hp = hp
+                if monster_name not in cowsay.list_cows:
+                    print("Cannot add unknown monster")
+                    return
                 print("Monster replaced.")
                 return
+        
         self.monsters.append(Monster(x, y, hello_string, hp))
         print(f"Added monster at position ({x}, {y}) with greeting: {hello_string}")
 
