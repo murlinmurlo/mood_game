@@ -25,7 +25,7 @@ class Monster:
     def __init__(self, name, hello, hp):
         self.hello = hello
         self.name = name
-        self.hp = hp 
+        self.hp = int(hp) 
 
     def say(self):
         if self.name == "jgsbat":
@@ -43,7 +43,7 @@ class Field:
 
         if name in cowsay.list_cows() + ["jgsbat"]:
             self.matrix[(x, y)] = Monster(name, hello, hp)
-            print(f"Added monster {name} to ({x}, {y}) saying {hello} hp {hp}")
+            print(f"Added monster {name} to ({x}, {y}) saying {hello} hp {int(hp)}")
         else:
             print("Cannot add unknown monster")
 
@@ -68,6 +68,26 @@ class Player:
         self.player_pos = (x, y)
         print(f"Moved to {self.player_pos}")
         self.encounter(field)
+
+    def attack(self, field):
+        if field.matrix.get(self.player_pos) is None:
+            print("No monster here")
+            return
+
+        monster = field.matrix[self.player_pos]
+        if monster.hp >= 10:
+            damage = 10
+        else:
+            damage = monster.hp
+
+        print(f"Attacked {monster.name}, damage {damage} hp")
+        
+        monster.hp -= damage
+        if monster.hp <= 0:
+            del field.matrix[self.player_pos]
+            print(f"{monster.name} died")
+        else:
+            print(f"{monster.name} now has {monster.hp} hp")
 
 
 class GameCmd(cmd.Cmd):
@@ -111,6 +131,11 @@ class GameCmd(cmd.Cmd):
     def emptyline(self):
         """Do nothing on empty input"""
         pass
+
+    def do_attack(self, arg):
+        """Attack the monster"""
+        self.player.attack(self.field)
+
 
 player1 = Player()
 field1 = Field()
