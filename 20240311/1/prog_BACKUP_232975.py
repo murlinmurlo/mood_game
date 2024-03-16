@@ -69,15 +69,25 @@ class Player:
         print(f"Moved to {self.player_pos}")
         self.encounter(field)
 
+<<<<<<< HEAD
     def attack(self, field, weapon="sword"):
-
+=======
+    def attack(self, field, monster_name):
+>>>>>>> attack_by_name
         if field.matrix.get(self.player_pos) is None:
             print("No monster here")
             return
 
         monster = field.matrix[self.player_pos]
+<<<<<<< HEAD
         if weapon == "sword":
+=======
+        if monster.name != monster_name:
+            print(f"No {monster_name} here")
+            return
 
+        if monster.hp >= 10:
+>>>>>>> attack_by_name
             damage = 10
         elif weapon == "spear":
             damage = 15

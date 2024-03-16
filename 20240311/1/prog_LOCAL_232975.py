@@ -70,14 +70,12 @@ class Player:
         self.encounter(field)
 
     def attack(self, field, weapon="sword"):
-
         if field.matrix.get(self.player_pos) is None:
             print("No monster here")
             return
 
         monster = field.matrix[self.player_pos]
         if weapon == "sword":
-
             damage = 10
         elif weapon == "spear":
             damage = 15
@@ -139,28 +137,9 @@ class GameCmd(cmd.Cmd):
         """Do nothing on empty input"""
         pass
 
-    def complete_attack(self, text, line, begidx, endidx):
-        monster_names = [name for name in cowsay.list_cows() if name != "jgsbat"]
-        if not text:
-            completions = monster_names
-        else:
-            completions = [name for name in monster_names if name.startswith(text)]
-        return completions
-
     def do_attack(self, arg):
         """Attack the monster"""
-        args = shlex.split(arg)
-        if len(args) != 1:
-            print("Invalid command format")
-            return
-        monster_name = args[0]
-        if self.field.matrix.get(self.player.player_pos) is None:
-            print("No monster here")
-            return
-        if monster_name not in cowsay.list_cows():
-            print(f"No monster with the name {monster_name} here")
-            return
-        self.player.attack(self.field, monster_name)
+        self.player.attack(self.field)
 
 
 player1 = Player()
