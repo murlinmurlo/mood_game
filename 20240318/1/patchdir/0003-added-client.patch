@@ -1,0 +1,82 @@
+From 81d333a5cadc8a0cc64287544e93f13ce1ea6f4d Mon Sep 17 00:00:00 2001
+From: Maria <masha.burdugova@mail.ru>
+Date: Sat, 23 Mar 2024 16:17:36 +0000
+Subject: [PATCH 3/4] added client
+
+---
+ 20240318/1/client.py | 20 ++++++++++++++++++++
+ 20240318/1/server.py | 23 +++++++++++++++++++----
+ 2 files changed, 39 insertions(+), 4 deletions(-)
+ create mode 100644 20240318/1/client.py
+
+diff --git a/20240318/1/client.py b/20240318/1/client.py
+new file mode 100644
+index 0000000..7803de4
+--- /dev/null
++++ b/20240318/1/client.py
+@@ -0,0 +1,20 @@
++import socket
++
++class Client:
++    def __init__(self, host='localhost', port=12345):
++        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
++        self.client.connect((host, port))
++
++    def send_command(self, command):
++        self.client.sendall(command.encode())
++        data = self.client.recv(1024)
++        print(data.decode())
++
++    def start(self):
++        while True:
++            command = input("> ")
++            self.send_command(command)
++
++client = Client()
++client.start()
++
+diff --git a/20240318/1/server.py b/20240318/1/server.py
+index a9efc27..675e241 100644
+--- a/20240318/1/server.py
++++ b/20240318/1/server.py
+@@ -93,11 +93,14 @@ class GameState:
+         return f"Player moved to position ({new_x}, {new_y})"
+ 
+     def addmon(self, name, x, y, hello, hp):
+-        if (x, y) in self.monsters:
+-            return "A monster already exists at this position"
++        if self.matrix.get((x, y)) is not None:
++            print("Replaced the old monster")
++
++        if name in cowsay.list_cows() + ["jgsbat"]:
++            self.matrix[(x, y)] = Monster(name, hello, hp)
++            print(f"Added monster {name} to ({x}, {y}) saying {hello} hp {int(hp)}")
+         else:
+-            self.monsters[(x, y)] = {'name': name, 'hello': hello, 'hp': int(hp)}
+-            return f"Added monster {name} at position ({x}, {y})"
++            print("Cannot add unknown monster")
+ 
+     def attack(self, weapon):
+         for pos, monster in self.monsters.items():
+@@ -118,6 +121,18 @@ class GameState:
+                 return f"Monster {monster['name']} took damage, remaining health: {monster['hp']} points"
+         return f"Monster not found"
+ 
++class Monster:
++    def __init__(self, name, hello, hp):
++        self.hello = hello
++        self.name = name
++        self.hp = int(hp) 
++
++    def say(self):
++        if self.name == "jgsbat":
++            print(cowsay.cowsay(self.hello, cowfile=custom_monster))
++        else:
++            print(cowsay.cowsay(self.hello, cow=self.name))
++
+     
+ 
+     
+-- 
+2.44.0
+
