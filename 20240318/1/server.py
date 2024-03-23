@@ -93,11 +93,14 @@ class GameState:
         return f"Player moved to position ({new_x}, {new_y})"
 
     def addmon(self, name, x, y, hello, hp):
-        if (x, y) in self.monsters:
-            return "A monster already exists at this position"
+        if self.matrix.get((x, y)) is not None:
+            print("Replaced the old monster")
+
+        if name in cowsay.list_cows() + ["jgsbat"]:
+            self.matrix[(x, y)] = Monster(name, hello, hp)
+            print(f"Added monster {name} to ({x}, {y}) saying {hello} hp {int(hp)}")
         else:
-            self.monsters[(x, y)] = {'name': name, 'hello': hello, 'hp': int(hp)}
-            return f"Added monster {name} at position ({x}, {y})"
+            print("Cannot add unknown monster")
 
     def attack(self, weapon):
         for pos, monster in self.monsters.items():
@@ -117,6 +120,18 @@ class GameState:
             else:
                 return f"Monster {monster['name']} took damage, remaining health: {monster['hp']} points"
         return f"Monster not found"
+
+class Monster:
+    def __init__(self, name, hello, hp):
+        self.hello = hello
+        self.name = name
+        self.hp = int(hp) 
+
+    def say(self):
+        if self.name == "jgsbat":
+            print(cowsay.cowsay(self.hello, cowfile=custom_monster))
+        else:
+            print(cowsay.cowsay(self.hello, cow=self.name))
 
     
 
