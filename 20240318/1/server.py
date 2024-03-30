@@ -28,9 +28,20 @@ class Server:
             if not data:
                 break
             command, *args = data.decode().split()
-            response = self.execute_command(command, args)
-            if response is not None:  # Check if response is not None before sending
+            if command == 'move':
+                dx, dy = map(int, args)
+                response = self.game_state.move(dx, dy)
                 client.sendall(response.encode())
+            elif command == 'addmon':
+                name, x, y, hello, hp = args
+                response = self.game_state.addmon(name, int(x), int(y), hello, int(hp))
+                client.sendall(response.encode())
+            elif command == 'attack':
+                response = self.game_state.attack(self.game_state.player_pos, args[0])
+                client.sendall(response.encode())
+            else:
+                client.sendall("Unknown command".encode())
+
 
     
 
@@ -55,11 +66,16 @@ class GameState:
         self.monsters = {}  
 
     def move(self, dx, dy):
-        new_x = (self.player_pos[0] + dx) % 10  
+        new_x = (self.player_pos[0] + dx) % 10
         new_y = (self.player_pos[1] + dy) % 10
-        self.player_pos = (new_x, new_y)
-        return f"Player moved to position ({new_x}, {new_y})"
-
+        if (new_x, new_y) in self.monsters:
+            monster = self.monsters[(new_x, new_y)]
+            # Send the monster's message to the client using cowsay
+            return f"Player moved to position ({new_x}, {new_y})\n{monster.get_message()}"
+        else:
+            self.player_pos = (new_x, new_y)
+            return f"Player moved to position ({new_x}, {new_y})"
+            
     def addmon(self, name, x, y, hello, hp):
         if self.monsters.get((x, y)) is not None:
             print("Replaced the old monster")
@@ -67,28 +83,34 @@ class GameState:
         if name in cowsay.list_cows() + ["jgsbat"]:
             self.monsters[(x, y)] = Monster(name, hello, hp)
             print(f"Added monster {name} to ({x}, {y}) saying {hello} hp {int(hp)}")
+            return "Added monster"  
         else:
             print("Cannot add unknown monster")
+            return "Cannot add unknown monster"
 
 
-    def attack(self, weapon):
+    def attack(self, player_pos, weapon):
+        player_x, player_y = player_pos
         for pos, monster in self.monsters.items():
-            if weapon == "sword":
-                damage = 10
-            elif weapon == "spear":
-                damage = 15
-            elif weapon == "axe":
-                damage = 20
-            else:
-                return "Unknown weapon"
+            monster_x, monster_y = pos
+            if (player_x, player_y) == (monster_x, monster_y):
+                if weapon == "sword":
+                    damage = 10
+                elif weapon == "spear":
+                    damage = 15
+                elif weapon == "axe":
+                    damage = 20
+                else:
+                    return "Unknown weapon"
 
-            monster['hp'] -= damage
-            if monster['hp'] <= 0:
-                del self.monsters[pos]
-                return f"Monster {monster['name']} killed"
-            else:
-                return f"Monster {monster['name']} took damage, remaining health: {monster['hp']} points"
-        return f"Monster not found"
+                monster.hp -= damage
+                if monster.hp <= 0:
+                    del self.monsters[pos]
+                    return f"Monster {monster.name} killed"
+                else:
+                    return f"Monster {monster.name} took damage, remaining health: {monster.hp} points"
+        return "No monster here"
+
 
 class Monster:
     def __init__(self, name, hello, hp):
@@ -102,7 +124,11 @@ class Monster:
         else:
             print(cowsay.cowsay(self.hello, cow=self.name))
 
-    
+    def get_message(self):
+        if self.name == "jgsbat":
+            return cowsay.cowsay(self.hello, cowfile=custom_monster)
+        else:
+            return cowsay.cowsay(self.hello, cow=self.name)
 
     
 server = Server()
