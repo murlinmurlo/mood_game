@@ -19,7 +19,15 @@ class Client:
         await self.writer.drain()
         print("Connected to the server")
 
-        asyncio.create_task(self.receive_messages())  
+        asyncio.create_task(self.receive_messages()) 
+
+    async def send_command(self, command):
+        if self.writer:
+            self.writer.write(command.encode())
+            await self.writer.drain()
+        else:
+            print("Not connected to the server. Cannot send command.")
+ 
  
 
     async def receive_messages(self):
@@ -28,11 +36,9 @@ class Client:
             if not data:
                 break
             print(data.decode())
-            await asyncio.get_event_loop().run_in_executor(None, input, "> ")
-
-    async def send_command(self, command):
-        self.writer.write(command.encode())
-        await self.writer.drain()
+        async def send_command(self, command):
+            self.writer.write(command.encode())
+            await self.writer.drain()
 
 async def main():
     print("<<< Welcome to Python-MUD 0.1 >>>")

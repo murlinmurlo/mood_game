@@ -23,10 +23,35 @@ class Server:
             username = client.recv(1024).decode()  
             threading.Thread(target=self.handle_client, args=(client, username)).start()
 
+    def broadcast_message(self, message):
+        for client in self.connected_clients.values():
+            client.sendall(message.encode())
+
+    def attack_monster(self, attacker_username, weapon, monster_name, damage, remaining_hp, monster_killed):
+        # Construct the message based on the attack event
+        if monster_killed:
+            message = f"{attacker_username} attacked {monster_name} with {weapon}, dealt {damage} damage, and killed the monster!"
+        else:
+            message = f"{attacker_username} attacked {monster_name} with {weapon}, dealt {damage} damage. Remaining HP: {remaining_hp}"
+
+        self.broadcast_message(message)
+
+    def add_monster(self, placer_username, monster_name, hp):
+        message = f"{placer_username} added a {monster_name} with {hp} HP"
+        self.broadcast_message(message)
+
+    def user_entered(self, username):
+        message = f"{username} entered the game"
+        self.broadcast_message(message)
+
+    def user_left(self, username):
+        message = f"{username} left the game"
+        self.broadcast_message(message)
+
     def handle_client(self, client, username):
         if username in self.connected_clients:
             client.sendall("Username already in use, please choose another one".encode())
-            client.close()  
+            client.close()
         else:
             self.connected_clients[username] = client
             client.sendall("Connected to the server".encode())
@@ -43,13 +68,14 @@ class Server:
             elif command == 'addmon':
                 name, x, y, hello, hp = args
                 response = self.game_state.addmon(name, int(x), int(y), hello, int(hp))
+                self.add_monster(username, name, hp)  # Notify all clients about the monster addition event
                 client.sendall(response.encode())
             elif command == 'attack':
                 response = self.game_state.attack(self.game_state.player_pos, args[0])
+                self.attack_monster(username, args[0], args[1], response.damage_dealt, response.remaining_hp, response.monster_killed)  # Notify all clients about the attack event
                 client.sendall(response.encode())
             else:
                 client.sendall("Unknown command".encode())
-
 
     
 
