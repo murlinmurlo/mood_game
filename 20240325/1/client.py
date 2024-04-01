@@ -12,15 +12,12 @@ class Client:
         print(data.decode())
 
     def start(self):
-        self.client.sendall(self.username.encode())
-        response = self.client.recv(1024).decode()
-        print(response)
-        if response != "Connected to the server":
-            print("Connection failed: " + response)
-            return
+        print("Server started")
         while True:
-            command = input("> ")
-            self.send_command(command)
+            client, addr = self.server.accept()
+            print(f"Connected by {addr}")
+            username = client.recv(1024).decode()  # Receive the username from the client
+            threading.Thread(target=self.handle_client, args=(client, username)).start()
 
 print("<<< Welcome to Python-MUD 0.1 >>>")
 username = input("Enter your username: ")
