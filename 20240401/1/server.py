@@ -43,7 +43,6 @@ class Player():
 			responce += (f"\n{mon[0]} now has {mon[2]}")
 		return responce
 		
-		
 
 jgsbat = cowsay.read_dot_cow(io.StringIO('''
 $the_cow = <<EOC;
@@ -67,8 +66,6 @@ def encounter(x,y):
     else:
         return(cowsay.cowsay(monsters[x*10+y][1], cow = monsters[x*10+y][0]))
 
-
-
 def addmon(name, x, y, hello, hitpoints):
     if name not in cowsay.list_cows() and name != "jgsbat":
         print("Cannot add unknown monster")
@@ -82,71 +79,74 @@ def addmon(name, x, y, hello, hitpoints):
         responce += ("\nReplaced the old monster")
     return responce
 
-
-
-
-
+async def sayall(username, message):
+    for out in clients.values():
+        await out.put(f"{username}: {message}")
+        
 
 async def chat(reader, writer):
-	username = await reader.readline()
-	username = username.decode()
-	username = username[:len(username)-1]
-	if username in clients:
-		writer.write("Connection failed\n".encode())
-		await writer.drain()
-		writer.close()
-		await writer.wait_closed()
-		return
-	print("Connected with", username)
-	for out in clients.values():
-		await out.put(f"{username} joined the server\n")
-	writer.write(f"{username} joined the server\n".encode()) 
-	await writer.drain()
-	clients[username] = asyncio.Queue()
-	player = Player()
-	send = asyncio.create_task(reader.readline())
-	receive = asyncio.create_task(clients[username].get())
-	while not reader.at_eof():
-		done, pending = await asyncio.wait([send, receive], return_when=asyncio.FIRST_COMPLETED)
-		for q in done:
-			if q is send:
-				send = asyncio.create_task(reader.readline())
-				if len(q.result()) != 0:
-					com, *args = shlex.split(q.result().decode())
-					match com:
-						case "move":
-							await clients[username].put(player.moving(int(args[0]), int(args[1])))
-						case "addmon":
-							res = addmon(args[0], int(args[1]), int(args[2]), args[3], int(args[4]))
-							for out in clients.values():
-								await out.put(username+ " " + res)
-						case "attack":
-							if len(args) == 1:
-								res = player.attack(args[0])
-								if res == "No monster here":
-									await clients[username].put(res)
-								else:
-									for out in clients.values():
-										await out.put(username+ " " + res)
-							else:
-								res = player.attack(args[0], args[2])
-								if res == "No monster here":
-									await clients[username].put(res)
-								else:
-									for out in clients.values():
-										await out.put(username + " " +res)
-			elif q is receive:
-				receive = asyncio.create_task(clients[username].get())
-				writer.write(f"{q.result()}\n".encode())
-				await writer.drain()
-	send.cancel()
-	receive.cancel()
-	print(username, "DONE")
-	del clients[username]
-	for out in clients.values():
-		await out.put(f"{username} left the server\n")
-	writer.close()
-	await writer.wait_closed()
+    username = await reader.readline()
+    username = username.decode()
+    username = username[:len(username)-1]
+    if username in clients:
+        writer.write("Connection failed\n".encode())
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+        return
+    print("Connected with", username)
+    for out in clients.values():
+        await out.put(f"{username} joined the server\n")
+    writer.write(f"{username} joined the server\n".encode()) 
+    await writer.drain()
+    clients[username] = asyncio.Queue()
+    player = Player()
+    send = asyncio.create_task(reader.readline())
+    receive = asyncio.create_task(clients[username].get())
+    while not reader.at_eof():
+        done, pending = await asyncio.wait([send, receive], return_when=asyncio.FIRST_COMPLETED)
+        for q in done:
+            if q is send:
+                send = asyncio.create_task(reader.readline())
+                if len(q.result()) != 0:
+                    com, *args = shlex.split(q.result().decode())
+                    match com:
+                        case "move":
+                            await clients[username].put(player.moving(int(args[0]), int(args[1])))
+                        case "addmon":
+                            res = addmon(args[0], int(args[1]), int(args[2]), args[3], int(args[4]))
+                            for out in clients.values():
+                                await out.put(username+ " " + res)
+                        case "attack":
+                            if len(args) == 1:
+                                res = player.attack(args[0])
+                                if res == "No monster here":
+                                    await clients[username].put(res)
+                                else:
+                                    for out in clients.values():
+                                        await out.put(username+ " " + res)
+                            else:
+                                res = player.attack(args[0], args[2])
+                                if res == "No monster here":
+                                    await clients[username].put(res)
+                                else:
+                                    for out in clients.values():
+                                        await out.put(username + " " +res)
+                        case "sayall":
+                            await sayall(username, ' '.join(args))
+            elif q is receive:
+                receive = asyncio.create_task(clients[username].get())
+                writer.write(f"{q.result()}\n".encode())
+                await writer.drain()
+    send.cancel()
+    receive.cancel()
+    print(username, "DONE")
+    del clients[username]
+    for out in clients.values():
+        await out.put(f"{username} left the server\n")
+    writer.close()
+    await writer.wait_closed()
+
 	
 async def main():
     server = await asyncio.start_server(chat, '0.0.0.0', 1337)
