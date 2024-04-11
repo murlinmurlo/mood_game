@@ -1,31 +1,27 @@
+import sys
 import calendar
 
-def restcalend(year, month):
-   
-    cal = calendar.monthcalendar(year, month)
 
-    
-    table_header = ".. table:: {} {}\n\n".format(calendar.month_name[month], year)
-    table_header += "\n    == == == == == == ==\n"
-    table_header += "    Mo Tu We Th Fr Sa Su\n"
-    table_header += "    == == == == == == ==\n"
+def restcalend(Y, M):
+    '''ReSTify calendar().
 
-    
-    table_rows = ""
-    for week in cal:
-        row = "    "
-        for day in week:
-            if day == 0:
-                row += "   "
-            else:
-                row += "{:2d} ".format(day)
-        row += "\n"
-        table_rows += row
+:param Y: Year
+:param M: Month
+:return: ReSTified calendar'''
 
-  
-    table_footer = "    == == == == == == ==\n"
+    print('.. table:: ', end ='')
+    title, days, *nums = calendar.month(yr, mth).split('\n')
 
-   
-    return table_header + table_rows + table_footer
+    print(title.replace('  ', ''))
+    print()
+    print('    == == == == == == ==')
+    print('   ', days)
+    print('    == == == == == == ==')
+    for num in nums[:-1]:
+        print('   ', num)
+    print('    == == == == == == ==')
 
-print(restcalend(2024, 4))
+if '__name__' == '__main__':
+    yr = int(sys.argv[1])
+    mth = int(sys.argv[2])
+    restcalend(yr, mth)
