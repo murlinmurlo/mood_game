@@ -147,10 +147,35 @@ async def chat(reader, writer):
     writer.close()
     await writer.wait_closed()
 
+
+import random
+
+DIRECTIONS = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # Вправо, влево, вверх, вниз
+DIRECTION_NAMES = ["right", "left", "up", "down"]
+
+async def move_monsters():
+    while True:
+        if monsters:
+            monster_location, monster_info = random.choice(list(monsters.items()))
+            x, y = divmod(monster_location, 10)
+            while True:
+                dx, dy = random.choice(DIRECTIONS)
+                new_x, new_y = (x + dx) % 10, (y + dy) % 10
+                if new_x * 10 + new_y not in monsters:  # Если клетка свободна
+                    del monsters[monster_location]
+                    monsters[new_x * 10 + new_y] = monster_info
+                    direction = DIRECTION_NAMES[DIRECTIONS.index((dx, dy))]
+                    message = f"{monster_info[0]} moved one cell {direction}"
+                    for out in clients.values():
+                        await out.put(message)
+                    break
+
 	
 async def main():
     server = await asyncio.start_server(chat, '0.0.0.0', 1337)
     async with server:
-        await server.serve_forever()
+        monster_task = asyncio.create_task(move_monsters())  # Запустить задачу движения монстров
+        await asyncio.gather(server.serve_forever(), monster_task)
+        #await server.serve_forever()
 
 asyncio.run(main())
