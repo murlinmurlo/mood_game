@@ -25,6 +25,7 @@ Server command:
     quit
 """
 
+import argparse
 import cmd
 import readline
 import socket
@@ -221,10 +222,16 @@ class MUDcmd(cmd.Cmd):
 
     prompt = ">> "
 
-    def __init__(self, socket):
+    def __init__(self, socket, timeout=0, *args, **kwargs):
         """Init from class cmd.Cmd."""
-        super().__init__()
+        super().__init__(*args, **kwargs)
         self.socket = socket
+        self.timeout = timeout
+
+    def precmd(self, line):
+        """Run before command execution."""
+        time.sleep(self.timeout)
+        return super().precmd(line)
 
     def emptyline(self):
         """Empty line interpted as 'do nothing'."""
@@ -314,14 +321,16 @@ def print_srv_message(socket, stop_event, cmdline):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Missing login")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(prog='MOOD',
+                                     description='Client for MOOD (multi user dangeon)')
+    parser.add_argument('login')
+    parser.add_argument('--file', metavar='filename')
+    args = parser.parse_args()
     print("<<< Welcome to Python-MUD 0.1 >>>")
     host, port = "localhost", 1337
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as soc:
         soc.connect((host, port))
-        login = sys.argv[1]
+        login = args.login
         soc.sendall(f'{login}\n'.encode())
         login_resp = soc.recv(8192).decode().strip()
         if login_resp[0] == '0':
@@ -329,12 +338,29 @@ if __name__ == "__main__":
             sys.exit(0)
         elif login_resp[0] == '1':
             print(login_resp[1:])
-        cmdline = MUDcmd(soc)
-        stop_event = threading.Event()
-        printer = threading.Thread(target=print_srv_message,
-                                   args=(soc, stop_event, cmdline)
-                                   )
-        printer.start()
-        cmdline.cmdloop()
-        stop_event.set()
-        printer.join()
+
+        if args.file is None:
+            # Default start cmd
+            cmdline = MUDcmd(soc)
+            stop_event = threading.Event()
+            printer = threading.Thread(target=print_srv_message,
+                                       args=(soc, stop_event, cmdline)
+                                       )
+            printer.start()
+            cmdline.cmdloop()
+            stop_event.set()
+            printer.join()
+        else:
+            # Read command from file
+            with open(args.file) as mood_file:
+                cmdline = MUDcmd(soc, timeout=1, stdin=mood_file)
+                cmdline.prompt = ''
+                cmdline.use_rawinput = False
+                stop_event = threading.Event()
+                printer = threading.Thread(target=print_srv_message,
+                                           args=(soc, stop_event, cmdline)
+                                           )
+                printer.start()
+                cmdline.cmdloop()
+                stop_event.set()
+                printer.join()

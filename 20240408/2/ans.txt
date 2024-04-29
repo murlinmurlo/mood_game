@@ -1,0 +1,63 @@
+<<< Welcome to Python-MUD 0.1 >>>
+Success! You are logged in as '111'
+
+User '111' logged in
+
+Moved to (0, 1)
+
+Moved to (0, 0)
+
+Moved to (9, 0)
+
+Moved to (0, 0)
+*** Unknown syntax: asdf
+
+111 added monster dragon with 100hp to (0, 0) saying 'Hi Hi!'
+
+Moved to (0, 1)
+
+Moved to (0, 0)
+
+________ 
+< Hi Hi! >
+ -------- 
+      \                    / \  //\
+       \    |\___/|      /   \//  \\
+            /0  0  \__  /    //  | \ \    
+           /     /  \/_/    //   |  \  \  
+           @_^_@'/   \/_   //    |   \   \ 
+           //_^_/     \/_ //     |    \    \
+        ( //) |        \///      |     \     \
+      ( / /) _|_ /   )  //       |      \     _\
+    ( // /) '/,_ _ _/  ( ; -.    |    _ _\.-~        .-~~~^-.
+  (( / / )) ,-{        _      `-.|.-~-.           .~         `.
+ (( // / ))  '/\      /                 ~-. _ .-~      .-~^-.  \
+ (( /// ))      `.   {            }                   /      \  \
+  (( / ))     .----~-.\        \-'                 .~         \  `. \^-.
+             ///.----..>        \             _ -~             `.  ^-`  ^-_
+               ///-._ _ _ _ _ _ _}^ - - - - ~                     ~-- ,.-~
+                                                                  /.-~
+
+111 attacked dragon with axe, damage 20hp
+dragon now has 80
+Error! Empty arguments
+
+111 attacked dragon with axe, damage 20hp
+dragon now has 60
+
+111 attacked dragon with axe, damage 20hp
+dragon now has 40
+
+111 attacked dragon with axe, damage 20hp
+dragon now has 20
+
+111 attacked dragon with axe, damage 20hp
+dragon died
+
+No dragon here
+
+No dragon here
+
+No dragon here
+
+Quit

@@ -24,9 +24,17 @@ Server command:
 """
 
 
+import argparse
 import asyncio
-from . import main
+from . import main, run_server
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(prog='MOOD',
+                                     description='Server for MOOD (multi user dangeon)')
+    parser.add_argument('--disable_wandering_monster', action='store_true')
+    args = parser.parse_args()
+    if args.disable_wandering_monster:
+        asyncio.run(run_server())
+    else:
+        asyncio.run(main())
