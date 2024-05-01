@@ -1,297 +1,233 @@
-"""
-Client for MUD (multi user dungeon).
 
-Client commands:
-    help - shows the help
-    left, right, down, up - movement
-    addmon - add a monster
-        <name> - monster name
-        coords <x> <y> - monster coordinates
-        hello <message> - monster greeting message
-        hp <hp> - monster health points
-    attack <name> [with weapon] - attack a monster
-    sayall <message> - message to all players
-    quit - exit the game
-
-For more information, use the "help" command.
-"""
-
-
-
-import asyncio
-import cowsay
 import random
+import cowsay
 import shlex
-from ..common import get_custom_cow, get_list_custom_cows, FIELD_SIZE, arsenal
+import socket
+import sys
+import json
+import threading
+import os
+import time
+
+DIRECTIONS = {"up": (0, -1), "down": (0, 1),
+                  "left": (-1, 0), "right": (1, 0)}
+WEAPONS_LIST = {"sword": 10, "spear": 15, "axe": 20}
+ALL_MONSTERS = list()
+dflt_wpn = "sword"
+FIELDX, FIELDY = 10, 10
+MOVE = "on"
+
+with open(os.path.join("mood", "common", "bat.txt")) as f:
+    jgsbat = cowsay.read_dot_cow(f)
 
 
-field = [[None]*FIELD_SIZE for _ in range(FIELD_SIZE)]
-logged_users = {}
+class Communicator():
+    """Class for managing connected users and sending them messages"""
+
+    def __init__(self):
+        """Initiation of communication manager"""
+        self.logins = dict()  # addr -> login
+        self.connections = dict()  # login -> socket
+
+    def add_connection(self, conn, addr, login):
+        """This runs when a new user is connected to send him messages"""
+        self.logins[addr] = login
+        self.connections[login] = conn
+
+    def remove_connection(self, addr):
+        """This runs when users disconnect to delete him from message subscribers"""
+        login = self.logins[addr]
+        del self.logins[addr]
+        del self.connections[login]
+
+    def sendall(self, msg: str):
+        """Sends given message to all logined users"""
+        for conn in self.connections.values():
+            conn.sendall(msg.encode())
+
+    def send(self, conn: socket.socket, msg: str):
+        """Sends given message to given socket"""
+        conn.sendall(msg.encode())
+
+    def player_exists(self, login: str) -> bool:
+        """Check if player with specified login is still playing"""
+        return True if self.connections.get(login, False) else False
 
 
-def make_cowsay(name, message):
-    """Make cowsay with cow with name `name` and message `message`."""
-    if name in cowsay.list_cows():
-        return cowsay.cowsay(message, cow=name)
-    elif name in get_list_custom_cows():
-        cow = get_custom_cow(name)
-        return cowsay.cowsay(message, cowfile=cow)
+class Field:
+    """Class for the in-game field"""
+
+    def __init__(self, x, y, cm):
+        """Initiating field instance"""
+        self._x, self._y = x, y
+        self.monsters = list([0 for i in range(self._x)] for j in range(self._y))
+        self.players = list([[] for i in range(self._x)] for j in range(self._y))
+        self.monsters_dict = {}
+        self.cm = cm
+
+    @property
+    def x(self):
+        """Return size of x axis"""
+        return self._x
+
+    @property
+    def y(self):
+        """Return size of y axis"""
+        return self._y
+
+    def addmon(self, x, y, hp, name, msg, plr):
+        """Create a monster and pin it to a field's cell"""
+        self.monsters_dict[name] = self.monsters_dict.get(name, 0) + 1
+        x, y = int(x), int(y)
+        self.monsters[x][y] = Monster(x, y, hp, name, msg, plr, self, self.cm)
 
 
-class Gamer:
-    """Info about logged in user.
+class Player:
+    """Class for player"""
 
-    :param x: gamer's horizontal coordinate
-    :param y: gamer's vertical coordinate
-    :param queue: queue of server responce
-    """
+    def __init__(self, field, login, cm):
+        """Creating player instance with start coords and login"""
+        self._x, self._y = 0, 0
+        self.fld = field
+        field.players[self._x][self._y].append(self)
+        self.login = login
+        self.cm = cm
 
-    def __init__(self, x=0, y=0):
-        """Init gamer in cell (0, 0)."""
-        self.x = x
-        self.y = y
-        self.queue = asyncio.Queue()
+    def move(self, direction, conn):
+        """Move in a given direction"""
+        self.fld.players[self._x][self._y].remove(self)
+        self._x = (self._x
+                   + DIRECTIONS[direction][0]) % self.fld.x
+        self._y = (self._y
+                   + DIRECTIONS[direction][1]) % self.fld.y
+        self.fld.players[self._x][self._y].append(self)
+        msg = f"Moved to ({self._x}, {self._y})\n"
+        if self.fld.monsters[self._x][self._y]:
+            name = self.fld.monsters[self._x][self._y].name
+            msg += f"Found {name} {self.fld.monsters[self._x][self._y]._msg}\n"
+        self.cm.send(conn, msg)
+
+    def attack(self, name, damage, conn):
+        """Attack a monster, located in the same cell with the player"""
+        if self.fld.monsters[self._x][self._y] and \
+                self.fld.monsters[self._x][self._y].name == name:
+            result = self.fld.monsters[self._x][self._y].attacked(
+                int(damage), self.login
+            )
+            if result:
+                del self.fld.monsters[self._x][self._y]
+            return
+        self.cm.send(conn, f"No {name} here\n")
+        return
+
+    def sayall(self, *msg):
+        """Send message to all users"""
+        self.cm.sendall(f"{self.login}: {' '.join(msg)}")
 
 
 class Monster:
-    """Info about added monster.
+    """Class representing mosters"""
 
-    :param name: monster name
-    :param message: message that monster say
-    :param hp: monster's health point
-    """
+    def __init__(self, x, y, hp, name, msg, plr, fld, cm, func=None):
+        """
+        Initializing monster, need to provide his hp,
+        coords, name and message, which will appear, when
+        players meet him
+        """
+        self.author = plr
+        self._x, self._y, self.name = int(x), int(y), name
+        self._msg, self._func = msg, func
+        self._hp = int(hp)
+        self.fld = fld
+        self.cm = cm
+        ALL_MONSTERS.append(self)
+        cm.sendall(
+          f"User {plr.login} added monster {name} to ({x}, {y}) saying {msg}\n"
+        )
+        cm.sendall(f"srv added monster {name}\n")
+        if self._func is None:
+            if name == "jgsbat":
+                self._func = lambda x: print(cowsay.cowsay(x, cowfile=jgsbat))
+            else:
+                self._func = lambda x: print(cowsay.cowsay(x, cow=name))
 
-    def __init__(self, name='default', message='hello', hp=0):
-        """Init monster."""
-        self.name = name
-        self.message = message
-        self.hp = hp
+    def __bool__(self):
+        """This is needed to check, if there's a monster in a cell"""
+        return True
 
-    def __str__(self):
-        """Return monster name."""
-        return self.name
+    def attacked(self, damage, login):
+        """Function called, when monster is attacked to deal damage"""
+        dmg = min(damage, self._hp)
+        msg = f"User {login} attacked {self.name}, damage {dmg}\n"
+        self._hp -= min(damage, self._hp)
+        if self._hp == 0:
+            msg += f"{self.name} died\n"
+            msg += f"srv died monster {self.name}\n"
+            self.fld.monsters[self._x][self._y] = 0
+            self.fld.monsters_dict[self.name] -= 1
+            ALL_MONSTERS.remove(self)
+            self.cm.sendall(msg)
+            return True
+        else:
+            msg += f"{self.name} now has {self._hp}\n"
+            self.cm.sendall(msg)
+            return False
 
-
-async def send_all_users(message):
-    """Send message to all users."""
-    global logged_users
-    for gamer in logged_users.values():
-        await gamer.queue.put(message)
-
-
-async def encounter(y, x, login):
-    """Send to client monster's greetings.
-
-    :param y: vertical coordinate
-    :param x: horizontal coordinate
-    :param login: login of user that triggered encounter
-    """
-    global field, logged_users
-    gamer = logged_users[login]
-    if field[y][x] is None:
-        return
-    message = make_cowsay(field[y][x].name, field[y][x].message) + '\n'
-    await gamer.queue.put(message)
-
-
-async def move(x, y, login):
-    """Execute command ``move``.
-
-    :param x: horizontal shift
-    :param y: vertical shift
-    :param login: login of user that call ``move``
-    """
-    global logged_users
-    gamer = logged_users[login]
-    gamer.x = (gamer.x + x) % FIELD_SIZE
-    gamer.y = (gamer.y + y) % FIELD_SIZE
-    await gamer.queue.put(f"Moved to ({gamer.x}, {gamer.y})\n")
-    await encounter(gamer.y, gamer.x, login)
-
-
-async def addmon(name, x, y, message, hp, login):
-    """Execute command ``addmon``.
-
-    :param name: monster name
-    :param x: horizontal monster's coordinate
-    :param y: vertical monster's coordinate
-    :param message: message that monster say
-    :param hp: monster's health point
-    :param login: login of user that call ``addmon``
-    """
-    new_message = f"{login} added monster {name} with {hp}hp to ({x}, {y}) saying '{message}'\n"
-    if field[y][x] is not None:
-        new_message += "Replaced the old monster\n"
-    field[y][x] = Monster(name=name, message=message, hp=hp)
-    await send_all_users(new_message)
+    def move(self, dir):
+        """Function that moves monster in a chosen direction, if there is no monster in the next cell"""
+        next_x, next_y = (self._x + DIRECTIONS[dir][0]) % self.fld.x, (self._y + DIRECTIONS[dir][1]) % self.fld.y
+        if not self.fld.monsters[next_x][next_y]:
+            self.fld.monsters[self._x][self._y] = 0
+            self.cm.sendall(f"{self.name} moved one cell {dir}")
+            self._x, self._y = next_x, next_y
+            self.fld.monsters[self._x][self._y] = self
+            for pl in self.fld.players[self._x][self._y]:
+                self.cm.send(self.cm.connections[pl.login], f"Found {self.name} {self._msg}\n")
+            return True
+        return False
 
 
-async def attack(name, weapon, login):
-    """Execute command ``attack``.
-
-    :param name: attacked monster's name
-    :param weapon: user's weapon
-    :param login: login of user that call ``attack``
-    """
-    global logged_users
-    gamer = logged_users[login]
-    if field[gamer.y][gamer.x] is None or field[gamer.y][gamer.x].name != name:
-        await gamer.queue.put(f'No {name} here')
-        return
-    monster = field[gamer.y][gamer.x]
-    damage = arsenal[weapon]
-    damage = damage if monster.hp >= damage else monster.hp
-    new_message = f'{login} attacked {monster.name} with {weapon}, damage {damage}hp\n'
-    monster.hp -= damage
-    if monster.hp == 0:
-        new_message += f'{monster.name} died\n'
-        field[gamer.y][gamer.x] = None
-    else:
-        new_message += f'{monster.name} now has {monster.hp}\n'
-    await send_all_users(new_message)
-
-
-async def sayall(message, login):
-    """Execute command ``sayall``.
-
-    :param message: sended to all user message
-    :param login: login of user that call ``sayall``
-    """
-    new_message = f"{login}: {message}\n"
-    await send_all_users(new_message)
-
-
-async def chat(reader, writer):
-    """Parce and execute command and send responce to client."""
-    global logged_users, field
-
-    login = await reader.readline()
-    login = login.decode().strip()
-    if login in logged_users.keys():
-        writer.write(f"0User '{login}' already logged in\nConnection close\n".encode())
-        await writer.drain()
-        writer.close()
-        await writer.wait_closed()
-        return
-
-    logged_users[login] = Gamer()
-    writer.write(f"1Success! You are logged in as '{login}'\n".encode())
-    await writer.drain()
-    await send_all_users(f"User '{login}' logged in\n")
-
-    async def parce_command(cmd):
-        nonlocal reader, writer, send, receive, flag_quit
-        print(cmd)
-        print(cmd.decode().strip())
-        cmd = shlex.split(cmd.decode().strip())
-        print(cmd)
-        match cmd:
-            case ['move', x, y]:
-                await move(int(x), int(y), login)
-            case ['addmon', name, x, y, message, hp]:
-                await addmon(name, int(x), int(y), message, int(hp), login)
-            case ['attack', name, weapon]:
-                await attack(name, weapon, login)
-            case ['sayall', message]:
-                await sayall(message, login)
-            case ['quit']:
-                send.cancel()
-                receive.cancel()
-                del logged_users[login]
-                writer.write('Quit\n'.encode())
-                await writer.drain()
-                writer.close()
-                await writer.wait_closed()
-                await send_all_users(f"User '{login}' logged out\n")
-                flag_quit = True
-                return
-            case _:
-                print(f'Unknown command {cmd}')
-                send.cancel()
-                receive.cancel()
-                del logged_users[login]
-                writer.write('Quit\n'.encode())
-                await writer.drain()
-                writer.close()
-                await writer.wait_closed()
-                await send_all_users(f"User '{login}' logged out\n")
-                flag_quit = True
-                return
-
-    send = asyncio.create_task(reader.readline())
-    receive = asyncio.create_task(logged_users[login].queue.get())
-    flag_quit = False
-    while not reader.at_eof():
-        done, pending = await asyncio.wait([send, receive], return_when=asyncio.FIRST_COMPLETED)
-        for q in done:
-            if q is send:
-                send = asyncio.create_task(reader.readline())
-                cmd = q.result()
-                await parce_command(cmd)
-                if flag_quit:
-                    break
-            elif q is receive:
-                # Maybe need try except KeyError
-                receive = asyncio.create_task(logged_users[login].queue.get())
-                writer.write(f"{q.result()}\n".encode())
-                await writer.drain()
-        if flag_quit:
-            break
-
-
-async def monster_encounter(y, x):
-    """Encounter called by random_choice_monster.
-
-    :param x: monster's horizontal coordinate
-    :param y: monster's vertical coordinate
-    """
-    global field, logged_users
-    for gamer in logged_users.values():
-        if gamer.x == x and gamer.y == y:
-            message = make_cowsay(field[y][x].name, field[y][x].message) + '\n'
-            await gamer.queue.put(message)
-
-
-async def random_choice_monster():
-    """Choice random monster and try to move it."""
-    global field
-    while True:
-        monster_coords = [(y, x) for y in range(FIELD_SIZE) for x in range(FIELD_SIZE)
-                          if field[y][x]]
-        if not monster_coords:
+def handler(conn, addr, cm, fld):
+    """This runs for each client to process his actions"""
+    global MOVE
+    with conn:
+        print('Connected by', addr)
+        login = conn.recv(1024).decode()
+        if cm.player_exists(login):
+            conn.send("Login already in use!\n".encode())
             return
-        y, x = random.choice(monster_coords)
-        shift_direction, shift_y, shift_x = random.choice(
-                [('right', 0, 1),
-                 ('left', 0, -1),
-                 ('down', 1, 0),
-                 ('up', -1, 0)]
-                )
-        new_y, new_x = (y + shift_y) % FIELD_SIZE, (x + shift_x) % FIELD_SIZE
-        if not field[new_y][new_x]:
-            monster = field[y][x]
-            field[new_y][new_x] = monster
-            field[y][x] = None
-            await send_all_users(f"{monster.name} moved one cell {shift_direction}\n")
-            await monster_encounter(new_y, new_x)
-            return
+        cm.add_connection(conn, addr, login)
+        cm.sendall(f"User {login} logged in\n")
+        cm.send(conn, f"srv user login {login}\n")
+        cm.send(conn, f"srv fieldsz {FIELDX} {FIELDY}\n")
+        monsters = json.dumps(fld.monsters_dict)
+        cm.send(conn, f"srv existing monsters {monsters}\n")
+        plr = Player(fld, login, cm)
+        while data := conn.recv(1024):
+            info = shlex.split(data.decode())
+            print(info)
+            if info[0] == "move":
+                plr.move(info[1], conn)
+            if info[0] == "addmon":
+                fld.addmon(*info[1:], plr)
+            if info[0] == "attack":
+                info[2] = int(info[2])
+                plr.attack(*info[1:], conn)
+            if info[0] == "sayall":
+                plr.sayall(*info[1:])
+            if info[0] == "movemonsters":
+                MOVE = info[1]
+                cm.sendall("Moving monsters: " + info[1])
+    cm.remove_connection(addr)
+    cm.sendall(f"User {login} left the game\n")
+    cm.sendall(f"srv user left {login}")
 
 
-async def wandering_monster():
-    """Move monster while server is running."""
+def random_move():
+    """Moves random monster in a random direction every thirty seconds"""
     while True:
-        await asyncio.sleep(30)
-        print("Random monster is in game")
-        await random_choice_monster()
-
-
-async def run_server():
-    """Server run coroutine."""
-    server = await asyncio.start_server(chat, '0.0.0.0', 1337)
-    async with server:
-        await server.serve_forever()
-
-
-async def main():
-    """Execute ``run_server`` and ``wandering_monster`` coroutine."""
-    await asyncio.gather(run_server(), wandering_monster())
+        time.sleep(30)
+        if not ALL_MONSTERS or MOVE == "off":
+            continue
+        while not random.choice(ALL_MONSTERS).move(random.choice(list(DIRECTIONS.keys()))):
+            continue
