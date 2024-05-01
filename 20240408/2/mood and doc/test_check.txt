@@ -1,0 +1,51 @@
+ python -m mood.client h --file test.mood 
+
+<<< Welcome to Python-MUD 0.1 >>>
+Success! You are logged in as 'h'
+
+User 'h' logged in
+
+Moved to (0, 1)
+
+_______ 
+< Hola! >
+ ------- 
+     \
+      \
+       ("`-'  '-/") .___..--' ' "`-._
+         ` *_ *  )    `-.   (      ) .`-.__. `)
+         (_Y_.) ' ._   )   `._` ;  `` -. .-'
+      _.. `--'_..-_/   /--' _ .' ,4
+   ( i l ),-''  ( l i),'  ( ( ! .-'
+
+Moved to (0, 0)
+
+Moved to (9, 0)
+
+Moved to (0, 0)
+
+kitty moved one cell right
+
+h added monster kitty with 11hp to (0, 0) saying 'Hola!'
+
+Moved to (0, 1)
+
+Moved to (0, 0)
+
+_______ 
+< Hola! >
+ ------- 
+     \
+      \
+       ("`-'  '-/") .___..--' ' "`-._
+         ` *_ *  )    `-.   (      ) .`-.__. `)
+         (_Y_.) ' ._   )   `._` ;  `` -. .-'
+      _.. `--'_..-_/   /--' _ .' ,4
+   ( i l ),-''  ( l i),'  ( ( ! .-'
+
+h attacked kitty with axe, damage 11hp
+kitty died
+
+No kitty here
+
+Quit
