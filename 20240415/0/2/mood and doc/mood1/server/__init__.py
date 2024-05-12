@@ -1,7 +1,23 @@
+"""
+Server for MUD (multi user dungeon).
+
+Client commands:
+    help - shows the help
+    left, right, down, up - movement
+    addmon - add a monster
+        <name> - monster name
+        coords <x> <y> - monster coordinates
+        hello <message> - monster greeting message
+        hp <hp> - monster health points
+    attack <name> [with weapon] - attack a monster
+    sayall <message> - message to all players
+    quit - exit the game
+"""
+
+
 
 import asyncio
 import cowsay
-import gettext
 import random
 import shlex
 from ..common import get_custom_cow, get_list_custom_cows, FIELD_SIZE, arsenal
@@ -9,14 +25,10 @@ from ..common import get_custom_cow, get_list_custom_cows, FIELD_SIZE, arsenal
 
 field = [[None]*FIELD_SIZE for _ in range(FIELD_SIZE)]
 logged_users = {}
-WANDERING_TIMEOUT = 30
-LOCALES = {
-    ("ru_RU.UTF-8"): gettext.translation("mood.server", "po", ["ru"]),
-    ("en_US.UTF-8"): gettext.NullTranslations(),
-}
 
 
 def make_cowsay(name, message):
+    """Make cowsay with cow with name `name` and message `message`."""
     if name in cowsay.list_cows():
         return cowsay.cowsay(message, cow=name)
     elif name in get_list_custom_cows():
@@ -25,48 +37,53 @@ def make_cowsay(name, message):
 
 
 class Gamer:
+    """Info about logged in user.
+
+    :param x: gamer's horizontal coordinate
+    :param y: gamer's vertical coordinate
+    :param queue: queue of server responce
+    """
 
     def __init__(self, x=0, y=0):
+        """Init gamer in cell (0, 0)."""
         self.x = x
         self.y = y
         self.queue = asyncio.Queue()
-        self._locale = 'en_US.UTF-8'
-
-    @property
-    def locale(self):
-        return self._locale
-
-    @locale.setter
-    def locale(self, new_locale):
-        if new_locale in LOCALES.keys():
-            self._locale = new_locale
-        else:
-            print(f"No Locale '{new_locale}'")
-            self._locale = "en_US.UTF-8"
 
 
 class Monster:
+    """Info about added monster.
+
+    :param name: monster name
+    :param message: message that monster say
+    :param hp: monster's health point
+    """
 
     def __init__(self, name='default', message='hello', hp=0):
+        """Init monster."""
         self.name = name
         self.message = message
         self.hp = hp
 
     def __str__(self):
+        """Return monster name."""
         return self.name
 
 
-async def send_all_users(message, format_args, num=None):
+async def send_all_users(message):
+    """Send message to all users."""
     global logged_users
     for gamer in logged_users.values():
-        # TODO l10n
-        if num is None:
-            await gamer.queue.put(LOCALES[gamer.locale].gettext(message).format(*format_args))
-        else:
-            await gamer.queue.put(LOCALES[gamer.locale].ngettext(message, message, num).format(*format_args))
+        await gamer.queue.put(message)
 
 
 async def encounter(y, x, login):
+    """Send to client monster's greetings.
+
+    :param y: vertical coordinate
+    :param x: horizontal coordinate
+    :param login: login of user that triggered encounter
+    """
     global field, logged_users
     gamer = logged_users[login]
     if field[y][x] is None:
@@ -76,93 +93,89 @@ async def encounter(y, x, login):
 
 
 async def move(x, y, login):
+    """Execute command ``move``.
+
+    :param x: horizontal shift
+    :param y: vertical shift
+    :param login: login of user that call ``move``
+    """
     global logged_users
     gamer = logged_users[login]
     gamer.x = (gamer.x + x) % FIELD_SIZE
     gamer.y = (gamer.y + y) % FIELD_SIZE
-    await gamer.queue.put(LOCALES[logged_users[login].locale].gettext('Moved to ({}, {})\n').format(gamer.x, gamer.y))
+    await gamer.queue.put(f"Moved to ({gamer.x}, {gamer.y})\n")
     await encounter(gamer.y, gamer.x, login)
 
 
 async def addmon(name, x, y, message, hp, login):
-    new_message = "{} added monster {} with {}hp to ({}, {}) saying '{}'\n"
-    format_args = [login, name, hp, x, y, message]
+    """Execute command ``addmon``.
+
+    :param name: monster name
+    :param x: horizontal monster's coordinate
+    :param y: vertical monster's coordinate
+    :param message: message that monster say
+    :param hp: monster's health point
+    :param login: login of user that call ``addmon``
+    """
+    new_message = f"{login} added monster {name} with {hp}hp to ({x}, {y}) saying '{message}'\n"
     if field[y][x] is not None:
         new_message += "Replaced the old monster\n"
     field[y][x] = Monster(name=name, message=message, hp=hp)
-    # TODO l10n
-    await send_all_users(new_message, format_args, hp)
+    await send_all_users(new_message)
 
 
 async def attack(name, weapon, login):
+    """Execute command ``attack``.
+
+    :param name: attacked monster's name
+    :param weapon: user's weapon
+    :param login: login of user that call ``attack``
+    """
     global logged_users
     gamer = logged_users[login]
     if field[gamer.y][gamer.x] is None or field[gamer.y][gamer.x].name != name:
-    
-        await gamer.queue.put(LOCALES[logged_users[login].locale].gettext('No {} here\n').format(name))
+        await gamer.queue.put(f'No {name} here')
         return
     monster = field[gamer.y][gamer.x]
     damage = arsenal[weapon]
     damage = damage if monster.hp >= damage else monster.hp
-    new_message_1 = f'{{}} attacked {{}} with {weapon}, damage {{}}hp\n'
-    format_args_1 = [login, monster.name, damage]
+    new_message = f'{login} attacked {monster.name} with {weapon}, damage {damage}hp\n'
     monster.hp -= damage
     if monster.hp == 0:
-        new_message_2 = '{} died\n'
-        format_args_2 = [monster.name]
+        new_message += f'{monster.name} died\n'
         field[gamer.y][gamer.x] = None
-        await send_all_users(new_message_1, format_args_1, damage)
-        await send_all_users(new_message_2, format_args_2)
     else:
-        new_message_2 = '{} now has {}hp\n'
-        format_args_2 = [monster.name, monster.hp]
-        await send_all_users(new_message_1, format_args_1, damage)
-        await send_all_users(new_message_2, format_args_2, monster.hp)
+        new_message += f'{monster.name} now has {monster.hp}\n'
+    await send_all_users(new_message)
 
 
 async def sayall(message, login):
-    new_message = "{}: {}\n"
-    format_args = [login, message]
-    await send_all_users(new_message, format_args)
+    """Execute command ``sayall``.
 
-
-async def movemonsters(state):
-    global wandering_monster_task
-    if state == 'on':
-        if wandering_monster_task.cancelled():
-            wandering_monster_task = asyncio.create_task(wandering_monster())
-        await send_all_users('Moving monsters are on\n', [])
-    else:
-        if not wandering_monster_task.cancelled():
-            wandering_monster_task.cancel()
-        await send_all_users('Moving monsters are off\n', [])
-
-
-async def locale(new_locale, login):
-    global logged_users
-    gamer = logged_users[login]
-    gamer.locale = new_locale
-    await gamer.queue.put(
-            LOCALES[gamer.locale].gettext("Set up locale: {}").format(gamer.locale)
-            )
+    :param message: sended to all user message
+    :param login: login of user that call ``sayall``
+    """
+    new_message = f"{login}: {message}\n"
+    await send_all_users(new_message)
 
 
 async def chat(reader, writer):
+    """Parce and execute command and send responce to client."""
     global logged_users, field
 
     login = await reader.readline()
     login = login.decode().strip()
     if login in logged_users.keys():
-        writer.write(f"'{login}' already logged in\n".encode())
+        writer.write(f"0User '{login}' already logged in\nConnection close\n".encode())
         await writer.drain()
         writer.close()
         await writer.wait_closed()
         return
 
     logged_users[login] = Gamer()
-    writer.write(f"You are '{login}'\n".encode())
+    writer.write(f"1Success! You are logged in as '{login}'\n".encode())
     await writer.drain()
-    await send_all_users("'{}' logged in\n", [login])
+    await send_all_users(f"User '{login}' logged in\n")
 
     async def parce_command(cmd):
         nonlocal reader, writer, send, receive, flag_quit
@@ -179,10 +192,6 @@ async def chat(reader, writer):
                 await attack(name, weapon, login)
             case ['sayall', message]:
                 await sayall(message, login)
-            case ['movemonsters', state]:
-                await movemonsters(state)
-            case ['locale', new_locale]:
-                await locale(new_locale, login)
             case ['quit']:
                 send.cancel()
                 receive.cancel()
@@ -191,7 +200,7 @@ async def chat(reader, writer):
                 await writer.drain()
                 writer.close()
                 await writer.wait_closed()
-                await send_all_users("'{}' logged out\n", [login])
+                await send_all_users(f"User '{login}' logged out\n")
                 flag_quit = True
                 return
             case _:
@@ -199,12 +208,11 @@ async def chat(reader, writer):
                 send.cancel()
                 receive.cancel()
                 del logged_users[login]
-                # TODO l10n
                 writer.write('Quit\n'.encode())
                 await writer.drain()
                 writer.close()
                 await writer.wait_closed()
-                await send_all_users("'{}' logged out\n", [login])
+                await send_all_users(f"User '{login}' logged out\n")
                 flag_quit = True
                 return
 
@@ -221,6 +229,7 @@ async def chat(reader, writer):
                 if flag_quit:
                     break
             elif q is receive:
+                # Maybe need try except KeyError
                 receive = asyncio.create_task(logged_users[login].queue.get())
                 writer.write(f"{q.result()}\n".encode())
                 await writer.drain()
@@ -229,6 +238,11 @@ async def chat(reader, writer):
 
 
 async def monster_encounter(y, x):
+    """Encounter called by random_choice_monster.
+
+    :param x: monster's horizontal coordinate
+    :param y: monster's vertical coordinate
+    """
     global field, logged_users
     for gamer in logged_users.values():
         if gamer.x == x and gamer.y == y:
@@ -237,6 +251,7 @@ async def monster_encounter(y, x):
 
 
 async def random_choice_monster():
+    """Choice random monster and try to move it."""
     global field
     while True:
         monster_coords = [(y, x) for y in range(FIELD_SIZE) for x in range(FIELD_SIZE)
@@ -255,27 +270,26 @@ async def random_choice_monster():
             monster = field[y][x]
             field[new_y][new_x] = monster
             field[y][x] = None
-            # TODO l10n
-            await send_all_users(f"{{}} moved one cell {shift_direction}\n", [monster.name])
+            await send_all_users(f"{monster.name} moved one cell {shift_direction}\n")
             await monster_encounter(new_y, new_x)
             return
 
 
 async def wandering_monster():
+    """Move monster while server is running."""
     while True:
-        await asyncio.sleep(WANDERING_TIMEOUT)
-        print("Random monster is in")
+        await asyncio.sleep(30)
+        print("Random monster is in game")
         await random_choice_monster()
 
 
 async def run_server():
-
-
-
-async def main():
-    global wandering_monster_task
-    wandering_monster_task = asyncio.create_task(wandering_monster())
+    """Server run coroutine."""
     server = await asyncio.start_server(chat, '0.0.0.0', 1337)
     async with server:
         await server.serve_forever()
 
+
+async def main():
+    """Execute ``run_server`` and ``wandering_monster`` coroutine."""
+    await asyncio.gather(run_server(), wandering_monster())
