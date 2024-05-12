@@ -11,8 +11,8 @@ import sys
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "MOOD"
-copyright = "2023, mandesero"
-author = "mandesero"
+copyright = "2024, Maria"
+author = "Maria"
 release = "1.0"
 
 # -- General configuration ---------------------------------------------------

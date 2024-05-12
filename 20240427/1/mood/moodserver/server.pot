@@ -53,5 +53,5 @@ msgstr ""
 
 #: moodserver/server.py:414
 msgid "Set up locale: {}"
-msgstr ""
+msgstr "Установлена локаль: {}"
 
