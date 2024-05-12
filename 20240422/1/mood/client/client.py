@@ -138,6 +138,17 @@ class Game(cmd.Cmd):
         message = "sayall " + args + "\n"
         self._socket.send(message.encode())
 
+    def do_locale(self, args):
+        """
+        Set a user locale
+
+        :param locale: (str)  User locale.
+
+        :return: None
+        """
+        locale = args.strip() + "\n"
+        self._socket.send(" ".join(("locale", locale)).encode())
+
     def do_quit(self, args):
         """
         Disconnect from the server.

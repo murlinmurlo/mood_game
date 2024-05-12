@@ -13,6 +13,7 @@ flake8 = "*"
 pydocstyle = "*"
 babel = "*"
 black = "*"
+doit = "*"
 
 [requires]
 python_version = "3.10"

@@ -4,12 +4,27 @@ import cowsay as cs
 import shlex
 import asyncio
 import threading
+import locale
+import gettext
+import os
 from collections import defaultdict
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TypeAlias
 from time import sleep
 from random import choice
+from babel import Locale
 
 
+# === States ===
+State: TypeAlias = int
+
+NEW_USER = 1
+
+
+popath = os.path.join(os.path.dirname(__file__), "po")
+ENG = gettext.translation("server", popath, languages=["en"], fallback=True)
+RU = gettext.translation("server", popath, languages=["ru"], fallback=True)
+
+list_cows = cs.list_cows() + ["jgsbat"]
 WEAPONS = {
     "sword": 10,
     "spear": 15,
@@ -40,6 +55,7 @@ class Client:
         self.addr = addr
         self.hero = None
         self.writer = None
+        self.locale = ENG
         Client.client_list.update({name: self})
 
     @staticmethod
@@ -55,7 +71,7 @@ class Client:
         if name in Client.client_list:
             return False
 
-        _ = Client(name, addr)
+        Client(name, addr)
         return True
 
     @staticmethod
@@ -89,13 +105,13 @@ class Client:
             :return: (str) A string representation of the client object.
         """
 
-        return f"""
-        Name: {self.name}
-        Addr: {self.addr}
-        Pos : {self.hero.pos}
-        """
+        name = f"Name     : {self.name}"
+        addr = f"Address  : {self.addr}"
+        pos = f"Position : {self.hero.pos}"
 
-    def broadcast(self, msg: str) -> None:
+        return "\n".join((name, addr, pos)) + "\n"
+
+    def broadcast(self, msg: str, state: State = None) -> None:
         """
         Sends a message to all clients in the client list except for the calling client.
 
@@ -105,10 +121,7 @@ class Client:
         """
 
         for _, obj in filter(lambda u: u[0] != self.name, Client.client_list.items()):
-            obj.writer.write(msg)
-
-
-list_cows = cs.list_cows() + ["jgsbat"]
+            obj.writer.write(msg.encode())
 
 
 class Hero:
@@ -193,13 +206,13 @@ class Game:
         """
 
         i, j = monster.coords
-        msg = f"Added monster {monster.name} to {monster.coords} saying {monster.msg}."
+        new = False
         if self.field[i][j]:
-            msg += "\nReplaced the old monster"
+            new = True
 
         self.field[i][j] = monster
 
-        return msg
+        return monster.name, monster.coords, monster.msg, new
 
     def encounter(self, x: int, y: int) -> tuple[str]:
         """
@@ -226,12 +239,12 @@ class Game:
         i = self.player.hero.pos[0] = (x + self.player.hero.pos[0]) % 10
         j = self.player.hero.pos[1] = (y + self.player.hero.pos[1]) % 10
 
-        msg = f"Moved to ({i}, {j})"
+        msg = ""
         if self.field[i][j]:
             text, name = self.encounter(i, j)
             msg += cs.cowsay(message=text, cow=name)
 
-        return msg
+        return i, j, msg
 
     def attack(self, pos: tuple[int], name: str, dmg: int) -> tuple[str]:
         """
@@ -243,33 +256,37 @@ class Game:
         :return: (str, bool) message regarding the attack and boolean flag indicating whether the attack was carried out or not
         """
 
-        msg = "No monster here"
+        data = {}
+        data["died"] = False
+
+        data["here"] = data["here_name"] = False
         i, j = pos
         flag = False
         if monster := self.field[i][j]:
+            data["here"] = True
             if monster.name == name:
+                data["here_name"] = True
                 dmg = dmg if monster.hp > dmg else monster.hp
                 monster.hp -= dmg
-
-                msg = f"Attacked {monster.name}, damage {dmg} hp"
+                data["name"] = monster.name
+                data["dmg"] = dmg
 
                 if monster.hp == 0:
-                    msg += f"\n{monster.name} died"
+                    data["died"] = True
                     self.field[i][j] = None
                 else:
-                    msg += f"\n{monster.name} now has {monster.hp} hp"
+                    data["hp"] = monster.hp
                 flag = True
             else:
-                msg = f"No {name} here"
+                data["name"] = name
 
-        return msg, flag
+        return data, flag
 
 
 def monster_moving(delay=30):
     dangeon = Game(None)
     monsters = Monster.monsters
     while True:
-        #print("TRY TO MOVE IT MOVE IT")
         if monsters:
             monster = choice(monsters)
             x, y = monster.coords
@@ -302,11 +319,13 @@ def monster_moving(delay=30):
 
 async def echo(reader, writer):
     host, port = writer.get_extra_info("peername")
+    print(f"New connection from {host}:{port}")
     usr = await reader.readline()
     usr = usr.decode().strip()
 
     if not Client.connect(usr, f"{host}:{port}"):
         writer.write(f"User with login {usr} already exists.\n".encode())
+        print(f"Disconnect {host}:{port}")
         writer.close()
         await writer.wait_closed()
 
@@ -314,7 +333,11 @@ async def echo(reader, writer):
         clt = Client.meta(usr)
         clt.hero = Hero()
         clt.writer = writer
-        clt.broadcast(("\n New user:\n" + str(Client.meta(usr))).encode())
+
+        clt.locale.install()
+        meta = str(Client.meta(usr)) + "\n"
+        writer.write(meta.encode())
+        clt.broadcast(meta, NEW_USER)
 
         dungeon = Game(clt)
         while not reader.at_eof():
@@ -323,14 +346,16 @@ async def echo(reader, writer):
             ans = ""
             match msg:
                 case way if len(way) == 1 and way[0] in Game.ways:
-                    ans = dungeon.change_hero_pos(way[0])
-                    writer.write(ans.encode())
+                    i, j, msg = dungeon.change_hero_pos(way[0])
+                    clt.locale.install()
+                    ans = _("Moved to ({}, {})").format(i, j)
+                    writer.write((ans + msg).encode())
                     await writer.drain()
 
                 case ["addmon", *args]:
                     if len(args) == 8:
                         if args[0] in list_cows:
-                            ans = dungeon.add_monster(
+                            name, coords, msg, new = dungeon.add_monster(
                                 Monster(
                                     args[0],
                                     args[args.index("hello") + 1],
@@ -341,21 +366,53 @@ async def echo(reader, writer):
                                     ),
                                 )
                             )
+
+                            clt.locale.install()
+                            ans = _("Added monster {} to {} saying {}.").format(
+                                name, coords, msg
+                            )
+                            if new:
+                                ans += _("\nReplaced the old monster")
+
                             writer.write(ans.encode())
                             clt.broadcast((clt.name + ": " + ans).encode())
-                            
 
                 case ["attack", *args]:
-                    ans = dungeon.attack(clt.hero.pos, args[0], int(args[1]))
-                    if ans[1]:
-                        writer.write(ans[0].encode())
-                        clt.broadcast((clt.name + ": " + ans[0]).encode())
+                    data, flag = dungeon.attack(clt.hero.pos, args[0], int(args[1]))
+
+                    if not data["here"]:
+                        ans = _("No monster here")
+                    elif not data["here_name"]:
+                        ans = _("No {} here").format(data["name"])
                     else:
-                        writer.write(ans[0].encode())
-                        await writer.drain()
+                        ans = _("Attacked {}, damage {} hp").format(
+                            data["name"], data["dmg"]
+                        )
+                        if data["died"]:
+                            ans += "\n" + _("{} died.").format(data["name"])
+                        else:
+                            ans += "\n" + _("{} now has {} hp").format(
+                                data["name"], data["hp"]
+                            )
+
+                    if flag:
+                        clt.broadcast((clt.name + ": " + ans).encode())
+
+                    writer.write(ans.encode())
+                    await writer.drain()
 
                 case ["sayall", *text]:
                     clt.broadcast((clt.name + ": " + " ".join(text).strip()).encode())
+
+                case ["locale", locale]:
+                    if locale == "ru_RU.UTF8":
+                        clt.locale = RU
+                    else:
+                        clt.locale = ENG
+
+                    clt.locale.install()
+                    writer.write(_("Set up locale: {}").format(locale).encode())
+                    await writer.drain()
 
                 case ["quit"]:
                     break
@@ -373,7 +430,7 @@ async def echo(reader, writer):
 async def main():
     thr = threading.Thread(target=monster_moving, args=(30,))
     thr.start()
-    server = await asyncio.start_server(echo, "0.0.0.0", 1338)
+    server = await asyncio.start_server(echo, "0.0.0.0", 1337)
     async with server:
         await server.serve_forever()
 
