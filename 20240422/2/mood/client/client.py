@@ -51,6 +51,9 @@ class Game(cmd.Cmd):
     def __init__(self, socket):
         super().__init__()
         self._socket = socket
+    
+    def send(self, data):
+        self._socket.send(data)
 
     def do_addmon(self, args):
         """
@@ -62,10 +65,10 @@ class Game(cmd.Cmd):
         :param coords: (tuple) The coordinates of the monster on the field in the format (x, y).
         :return: None
         """
-
         if len(args := shlex.split(args)) == 8 and args[0] in list_cows:
             msg = "addmon " + shlex.join(args)
-            self._socket.send((msg.strip() + "\n").encode())
+            # self._socket.send((msg.strip() + "\n").encode())
+            self.send((msg.strip() + "\n").encode())
         elif args[0] not in list_cows:
             print("Cannot add unknown monster")
         else:
@@ -77,7 +80,8 @@ class Game(cmd.Cmd):
 
         :return: None
         """
-        self._socket.send(("up\n").encode())
+        # self._socket.send(("up\n").encode())
+        self.send(("up\n").encode())
 
     def do_down(self, args):
         """
@@ -85,7 +89,8 @@ class Game(cmd.Cmd):
 
         :return: None
         """
-        self._socket.send(("down\n").encode())
+        # self._socket.send(("down\n").encode())
+        self.send(("down\n").encode())
 
     def do_left(self, args):
         """
@@ -93,7 +98,8 @@ class Game(cmd.Cmd):
 
         :return: None
         """
-        self._socket.send(("left\n").encode())
+        # self._socket.send(("left\n").encode())
+        self.send(("left\n").encode())
 
     def do_right(self, args):
         """
@@ -101,7 +107,8 @@ class Game(cmd.Cmd):
 
         :return: None
         """
-        self._socket.send(("right\n").encode())
+        # self._socket.send(("right\n").encode())
+        self.send(("right\n").encode())
 
     def do_attack(self, args):
         """
@@ -115,15 +122,17 @@ class Game(cmd.Cmd):
         match args := shlex.split(args):
             case [t, "with", weapon]:
                 if weapon in WEAPONS:
-                    self._socket.send(
-                        (" ".join(["attack", t, str(WEAPONS[weapon])]) + "\n").encode()
-                    )
+                    # self._socket.send(
+                    #     (" ".join(["attack", t, str(WEAPONS[weapon])]) + "\n").encode()
+                    # )
+                    self.send((" ".join(["attack", t, str(WEAPONS[weapon])]) + "\n").encode())
                 else:
                     print("Unknown weapon")
             case [t]:
-                self._socket.send(
-                    (" ".join(["attack", t, str(WEAPONS["sword"])]) + "\n").encode()
-                )
+                # self._socket.send(
+                #     (" ".join(["attack", t, str(WEAPONS["sword"])]) + "\n").encode()
+                # )
+                self.send((" ".join(["attack", t, str(WEAPONS["sword"])]) + "\n").encode())
             case _:
                 print("Invalid arguments")
 
@@ -136,7 +145,8 @@ class Game(cmd.Cmd):
         :return: None
         """
         message = "sayall " + args + "\n"
-        self._socket.send(message.encode())
+        # self._socket.send(message.encode())
+        self.send(message.encode())
 
     def do_quit(self, args):
         """
@@ -144,7 +154,8 @@ class Game(cmd.Cmd):
 
             :return: None
         """
-        self._socket.send("quit\n".encode())
+        # self._socket.send("quit\n".encode())
+        self.send("quit\n".encode())
         self.onecmd("exit")
 
     def do_exit(self, args):
