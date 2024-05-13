@@ -1,0 +1,13 @@
+COPYING
+README.rst
+pyproject.toml
+MooClient.egg-info/PKG-INFO
+MooClient.egg-info/SOURCES.txt
+MooClient.egg-info/dependency_links.txt
+MooClient.egg-info/entry_points.txt
+MooClient.egg-info/requires.txt
+MooClient.egg-info/top_level.txt
+moodclient/__init__.py
+moodclient/__main__.py
+moodclient/client.py
+moodclient/defaults.py

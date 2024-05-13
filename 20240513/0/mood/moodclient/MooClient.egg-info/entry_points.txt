@@ -1,0 +1,2 @@
+[console_scripts]
+StartClient = moodclient.client:main

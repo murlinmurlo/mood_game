@@ -1,0 +1,12 @@
+COPYING
+README.rst
+pyproject.toml
+MooServer.egg-info/PKG-INFO
+MooServer.egg-info/SOURCES.txt
+MooServer.egg-info/dependency_links.txt
+MooServer.egg-info/entry_points.txt
+MooServer.egg-info/requires.txt
+MooServer.egg-info/top_level.txt
+moodserver/__init__.py
+moodserver/__main__.py
+moodserver/server.py
