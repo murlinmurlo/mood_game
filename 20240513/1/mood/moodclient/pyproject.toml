@@ -1,0 +1,30 @@
+[project]
+name = "MooClient"
+version = "1.0"
+description = "Client package for MOOD project"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = {file = "COPYING"}
+authors = [
+ {name = "Maksim V. Tyushev (aka mandesero)", email = "mandesero@gmail.com"}
+]
+
+keywords = ["python-cowsay", "project", "example"]
+classifiers = [
+      "Development Status :: 4 - Beta",
+      "Programming Language :: Python :: 3",
+      "License :: OSI Approved :: MIT License",
+      "Operating System :: OS Independent",
+]
+
+dependencies = ["python-cowsay"]
+
+[build-system]    
+build-backend = "setuptools.build_meta"
+requires = ["build", "coverage", "doit", "flake8", "pydocstyle", "setuptools"]
+
+[tools.setuptools]
+Packages = ["moodclient"]
+
+[project.scripts]
+StartClient = "moodclient.client:main"

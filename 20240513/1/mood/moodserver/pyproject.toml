@@ -1,0 +1,36 @@
+[project]
+name = "MooServer"
+version = "1.0"
+description = "Server package for MOOD project"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = {file = "COPYING"}
+authors = [
+ {name = "Maksim V. Tyushev (aka mandesero)", email = "mandesero@gmail.com"}
+]
+
+keywords = ["python-cowsay", "project", "example"]
+classifiers = [
+      "Development Status :: 4 - Beta",
+      "Programming Language :: Python :: 3",
+      "License :: OSI Approved :: MIT License",
+      "Operating System :: OS Independent",
+]
+
+dependencies = ["python-cowsay"]
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["Sphinx", "build", "coverage", "doit", "flake8", "pydocstyle", "setuptools"]
+
+[tools.setuptools]
+Packages = ["moodserver"]
+
+[project.scripts]
+StartServer = "moodserver.server:run"
+
+[tool.setuptools.package-dir]
+moodserver = "moodserver"
+
+[tool.setuptools.package-data]
+moodserver = ["moodserver/po/ru/*/*.mo"]
