@@ -4,10 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-python-cowsay = "*"
+sphinx = "*"
+morse = "*"
 babel = "*"
+python-cowsay = "*"
 
 [dev-packages]
+doit = "*"
 
 [requires]
 python_version = "3.11"

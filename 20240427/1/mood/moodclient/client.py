@@ -197,6 +197,6 @@ def start(_socket):
 
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _socket:
-        _socket.connect(("localhost", 1338))
+        _socket.connect(("localhost", 1337))
         _socket.send(f"{sys.argv[1]}\n".encode())
         start(_socket)

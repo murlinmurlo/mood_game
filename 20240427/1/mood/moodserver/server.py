@@ -430,7 +430,7 @@ async def echo(reader, writer):
 async def main():
     thr = threading.Thread(target=monster_moving, args=(30,))
     thr.start()
-    server = await asyncio.start_server(echo, "0.0.0.0", 1338)
+    server = await asyncio.start_server(echo, "0.0.0.0", 1337)
     async with server:
         await server.serve_forever()
 
