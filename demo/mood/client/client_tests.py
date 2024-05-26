@@ -11,7 +11,7 @@ class TestClientCommands(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True) as socket_mock,
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             sendall_call = socket_mock.mock_calls[4].args[0]
             self.assertEqual(sendall_call, b'sayall Hello world!\n')
 
@@ -21,7 +21,7 @@ class TestClientCommands(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True) as socket_mock,
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             sendall_call = socket_mock.mock_calls[4].args[0]
             self.assertEqual(sendall_call, b'movemonsters off\n')
 
@@ -31,7 +31,7 @@ class TestClientCommands(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True) as socket_mock,
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             sendall_call = socket_mock.mock_calls[4].args[0]
             self.assertEqual(sendall_call, b'movemonsters on\n')
 
@@ -41,7 +41,7 @@ class TestClientCommands(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True) as socket_mock,
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             sendall_call = socket_mock.mock_calls[4].args[0]
             self.assertEqual(sendall_call, b'locale ru_RU.UTF-8\n')
 '''
@@ -50,7 +50,7 @@ class TestClientCommands(unittest.TestCase):
                 mock.patch('sys.stdin', StringIO("documentation")),
                 mock.patch('webbrowser.open', autospec=True) as webbrowser_mock
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             webbrowser_mock.assert_called_with(client.doc_path)
 '''
 
@@ -61,7 +61,7 @@ class TestClientCommandParsing(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True) as socket_mock,
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             sendall_call = socket_mock.mock_calls[4].args[0]
             self.assertEqual(sendall_call, b'move 0 -1\n')
 
@@ -71,7 +71,7 @@ class TestClientCommandParsing(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True) as socket_mock,
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             sendall_call = socket_mock.mock_calls[4].args[0]
             self.assertEqual(sendall_call, b'move 0 1\n')
 
@@ -82,7 +82,7 @@ class TestClientCommandParsing(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True) as socket_mock,
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             sendall_call = socket_mock.mock_calls[6].args[0]
             self.assertEqual(sendall_call, b'attack kitty sword\n')
 
@@ -93,7 +93,7 @@ class TestClientCommandParsing(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True) as socket_mock,
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             sendall_call = socket_mock.mock_calls[6].args[0]
             self.assertEqual(sendall_call, b'attack kitty axe\n')
 
@@ -105,7 +105,7 @@ class TestClientCommandParsing(unittest.TestCase):
                 mock.patch('socket.socket', autospec=True),
                 mock.patch('mood.client.msg_reciever', return_value=True)
              ):
-            client.start_client("TESTING!")
+            client.start_client("test")
             output_call = output_mock.mock_calls[0].args[0]
             self.assertEqual(output_call, 'Unknown weapon\n~ ')
 

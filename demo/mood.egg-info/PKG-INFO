@@ -1,6 +1,0 @@
-Metadata-Version: 2.1
-Name: mood
-Version: 1.0.0
-Summary: Moo! Monster! Moo! Spooky! Moo-oo-o!
-Author-email: Roman Danilov <romanosauce.code@gmail.com>
-Requires-Dist: python-cowsay
