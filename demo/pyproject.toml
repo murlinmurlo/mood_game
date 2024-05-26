@@ -9,9 +9,9 @@ dependencies = [
     "python-cowsay",
 ]
 authors = [
-    {name = "Roman Danilov", email = "romanosauce.code@gmail.com"},
+    {name = "Maria B", email = "maria.burdugova@mail.ru"},
 ]
-description = "Moo! Monster! Moo! Spooky! Moo-oo-o!"
+description = "MOOD"
 
 [tool.setuptools.package-dir]
 mood = "mood"
