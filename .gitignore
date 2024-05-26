@@ -1,0 +1,5 @@
+build
+*.mood
+*.mo
+*.pot
+*.db
