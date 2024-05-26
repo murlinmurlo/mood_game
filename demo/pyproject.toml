@@ -15,3 +15,7 @@ description = "MOOD"
 
 [tool.setuptools.package-dir]
 mood = "mood"
+
+[project.scripts]
+client = "mood.client.__main__:main"
+server = "mood.server.__main__:main"
