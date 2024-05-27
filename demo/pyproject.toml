@@ -15,7 +15,15 @@ description = "MOOD"
 
 [tool.setuptools.package-dir]
 mood = "mood"
+<<<<<<< HEAD
 
 [project.scripts]
 client = "mood.client.__main__:start_client"
 server = "mood.server.__main__:main"
+||||||| parent of ac6a820 (check)
+=======
+
+[project.scripts]
+client = "mood.client.__main__:main"
+server = "mood.server.__main__:main"
+>>>>>>> ac6a820 (check)

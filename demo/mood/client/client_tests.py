@@ -44,15 +44,7 @@ class TestClientCommands(unittest.TestCase):
             client.start_client("test")
             sendall_call = socket_mock.mock_calls[4].args[0]
             self.assertEqual(sendall_call, b'locale ru_RU.UTF-8\n')
-'''
-    def test_9_open_documentation(self):
-        with (
-                mock.patch('sys.stdin', StringIO("documentation")),
-                mock.patch('webbrowser.open', autospec=True) as webbrowser_mock
-             ):
-            client.start_client("test")
-            webbrowser_mock.assert_called_with(client.doc_path)
-'''
+
 
 class TestClientCommandParsing(unittest.TestCase):
     def test_0_move_up(self):
