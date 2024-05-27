@@ -77,27 +77,27 @@ msgstr "У {} теперь {} очков здоровья"
 msgid "{} died"
 msgstr "{} мёртв"
 
-#: mood/server/__init__.py:408
+#: mood/server/__init__.py:410
 msgid "{} has joined the field"
 msgstr "{} в игре!"
 
-#: mood/server/__init__.py:446
+#: mood/server/__init__.py:443
 msgid "Moving monsters: off"
 msgstr "Режим бродячих монстров выключен"
 
-#: mood/server/__init__.py:454
+#: mood/server/__init__.py:450
 msgid "Moving monsters: on"
 msgstr "Режим бродячих монстров включен"
 
-#: mood/server/__init__.py:457
+#: mood/server/__init__.py:453
 msgid "Set up locale: {}"
 msgstr "Установлена локаль: {}"
 
-#: mood/server/__init__.py:474
+#: mood/server/__init__.py:468
 msgid "Something wrong with command"
 msgstr "Неверная команда"
 
-#: mood/server/__init__.py:488
+#: mood/server/__init__.py:480
 msgid "{} disconnected"
 msgstr "{} вышел из игры"
 
