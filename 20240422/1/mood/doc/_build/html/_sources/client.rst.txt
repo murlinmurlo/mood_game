@@ -1,6 +1,0 @@
-Client
-======
-
-.. automodule:: client
-   :members:
-   :undoc-members:
