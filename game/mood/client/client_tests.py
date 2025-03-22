@@ -44,6 +44,7 @@ class TestClientCommands(unittest.TestCase):
             client.start_client("TESTING!")
             sendall_call = socket_mock.mock_calls[4].args[0]
             self.assertEqual(sendall_call, b'locale ru_RU.UTF-8\n')
+<<<<<<< HEAD
 '''
     def test_9_open_documentation(self):
         with (
@@ -53,6 +54,9 @@ class TestClientCommands(unittest.TestCase):
             client.start_client("TESTING!")
             webbrowser_mock.assert_called_with(client.doc_path)
 '''
+=======
+
+>>>>>>> 9b1248bfcfe8b9049a2ae01990eb39a5c17cfd51
 
 class TestClientCommandParsing(unittest.TestCase):
     def test_0_move_up(self):

@@ -15,3 +15,13 @@ description = "Moo! Monster! Moo! Spooky! Moo-oo-o!"
 
 [tool.setuptools.package-dir]
 mood = "mood"
+<<<<<<< HEAD
+=======
+
+
+[project.scripts]
+client = "mood.client.__main__:start_client"
+server = "mood.server.__main__:main"
+
+
+>>>>>>> 9b1248bfcfe8b9049a2ae01990eb39a5c17cfd51
