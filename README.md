@@ -9,7 +9,7 @@ MOOD - это многопользовательская текстовая иг
 1. Клонируйте репозиторий
 
    ```bash
-   git clone https://github.com/yourusername/mood-game.git
+   git clone https://github.com/murlinmurlo/mood_game.git
    cd mood-game
 
        Убедитесь, что у вас установлен Python 3.7 или выше.
